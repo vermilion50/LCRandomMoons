@@ -98,22 +98,28 @@ namespace LCRandomMoons.Patches
                 string[] blacklistArray = blacklist.Split(new[] { ',' }, StringSplitOptions.RemoveEmptyEntries);
                 if (!blacklistArray.Contains(LevelManager.CurrentExtendedLevel.NumberlessPlanetName))
                 {
-                    if (StartOfRound.Instance.CanChangeLevels())
-                    {
-                        selectLevel = GetRandomMoon(lastList);
-                        ModBase.Logger.LogInfo($"RandomDailyMoon: next moon {selectLevel.NumberlessPlanetName}");
-                        StartOfRound.Instance.ChangeLevelServerRpc(
-                            selectLevel.SelectableLevel.levelID, 0);
-                    }
-                    else { 
-                        ModBase.Logger.LogInfo($"Can't change levels");
+                    if (TimeOfDay.Instance.daysUntilDeadline != 3)
+                    {                   
+                        if (StartOfRound.Instance.CanChangeLevels())
+                        {
+                            selectLevel = GetRandomMoon(lastList);
+                            ModBase.Logger.LogInfo($"RandomDailyMoon: next moon {selectLevel.NumberlessPlanetName}");
+                            StartOfRound.Instance.ChangeLevelServerRpc(
+                                selectLevel.SelectableLevel.levelID, 0);
+                        }
+                        else { 
+                            ModBase.Logger.LogInfo($"Can't change levels");
+                        }
+                    } else {
+                        lastList = freeLevels;
+                        ModBase.Logger.LogInfo($"First Day Quota. Auto-travel disabled.");
                     }
                 } else
                 {
                     ModBase.Logger.LogInfo($"RandomDailyMoon: Auto-travel from the blacklist moons forbidden");
                 }
             }
-        } 
+        }
 
         public static string SetMoon(List<ExtendedLevel> moonlist, int moonlistListPrice, string routeName)
         {
@@ -335,7 +341,7 @@ namespace LCRandomMoons.Patches
             ModBase.Logger.LogInfo("-------------------------");
             foreach (var level in midLevels)
             {
-                ModBase.Logger.LogInfo(level.NumberlessPlanetName + " Pr:| " + level.RoutePrice + " ID: " + level.SelectableLevel.levelID);
+                ModBase.Logger.LogInfo(level.NumberlessPlanetName + " Pr: " + level.RoutePrice + " ID: " + level.SelectableLevel.levelID);
             }
             ModBase.Logger.LogInfo("-------------------------");
             ModBase.Logger.LogInfo("");
