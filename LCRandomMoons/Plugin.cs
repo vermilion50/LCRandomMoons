@@ -13,7 +13,7 @@ namespace LCRandomMoons
     {
         public const string modGUID = "KF.LCRandomMoons";
         private const string modName = "RandomMoons";
-        private const string modVersion = "1.0.0";
+        private const string modVersion = "1.0.2";
 
         private readonly Harmony harmony = new Harmony(modGUID);
         public static ModBase Instance;

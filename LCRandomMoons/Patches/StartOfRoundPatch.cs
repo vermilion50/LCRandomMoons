@@ -99,13 +99,16 @@ namespace LCRandomMoons.Patches
                 if (!blacklistArray.Contains(LevelManager.CurrentExtendedLevel.NumberlessPlanetName))
                 {
                     if (TimeOfDay.Instance.daysUntilDeadline != 3)
-                    {                   
-                        if (StartOfRound.Instance.CanChangeLevels())
+                    {
+                        PlayerControllerB localPlayer = GameNetworkManager.Instance.localPlayerController;
+                        if (localPlayer != null && localPlayer.IsHost && StartOfRound.Instance.CanChangeLevels())
                         {
+                            Terminal terminal = UnityEngine.Object.FindObjectOfType<Terminal>();
+                            terminal.SyncGroupCreditsServerRpc(terminal.groupCredits, terminal.numberOfItemsInDropship);
                             selectLevel = GetRandomMoon(lastList);
                             ModBase.Logger.LogInfo($"RandomDailyMoon: next moon {selectLevel.NumberlessPlanetName}");
                             StartOfRound.Instance.ChangeLevelServerRpc(
-                                selectLevel.SelectableLevel.levelID, 0);
+                                selectLevel.SelectableLevel.levelID, terminal.groupCredits);
                         }
                         else { 
                             ModBase.Logger.LogInfo($"Can't change levels");
