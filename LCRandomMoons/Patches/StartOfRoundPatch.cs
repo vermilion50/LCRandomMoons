@@ -242,14 +242,14 @@ namespace LCRandomMoons.Patches
                     StringBuilder sb = new StringBuilder();
                     sb.AppendLine("Syntax: rd <command>");
                     sb.AppendLine("");
-                    sb.AppendLine("help - available commands");
-                    sb.AppendLine("list - shows a list of all the moons");
+                    sb.AppendLine("help - display available commands");
+                    sb.AppendLine("list - display a list all the moons by category");
                     sb.AppendLine("");
-                    sb.AppendLine("all - go to random moon from [all] list");
-                    sb.AppendLine("free - go to random moon from [free] list");
-                    sb.AppendLine("low - go to random moon from [low] list");
-                    sb.AppendLine("mid - go to random moon from [mid] list");
-                    sb.AppendLine("high - go to random moon from [high] list");
+                    sb.AppendLine("all - select random moon from [all] list");
+                    sb.AppendLine("free - select random moon from [free] list");
+                    sb.AppendLine("low - select random moon from [low] list");
+                    sb.AppendLine("mid - select random moon from [mid] list");
+                    sb.AppendLine("high - select random moon from [high] list");
                     sb.AppendLine("\n");
                     return sb.ToString();
                 },
