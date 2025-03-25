@@ -43,6 +43,9 @@
     <Reference Include="LethalLevelLoader">
       <HintPath>..\lib\LethalLevelLoader.dll</HintPath>
     </Reference>
+    <Reference Include="MaxWasUnavailable.LethalModDataLib">
+      <HintPath>..\lib\MaxWasUnavailable.LethalModDataLib.dll</HintPath>
+    </Reference>
     <Reference Include="System" />
     <Reference Include="System.Core" />
     <Reference Include="System.Xml.Linq" />

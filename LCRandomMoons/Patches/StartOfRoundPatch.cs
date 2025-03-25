@@ -1,5 +1,4 @@
-﻿using GameNetcodeStuff;
-using HarmonyLib;
+﻿using HarmonyLib;
 using LethalLevelLoader;
 using System;
 using System.Collections.Generic;
@@ -8,152 +7,209 @@ using System.Text;
 using Unity.Netcode;
 using TerminalApi.Classes;
 using static TerminalApi.TerminalApi;
+using LethalModDataLib.Attributes;
+using LethalModDataLib.Enums;
+
 
 namespace LCRandomMoons.Patches
 {
     [HarmonyPatch(typeof(StartOfRound))]
     public class StartOfRoundPatch : NetworkBehaviour
     {
-        private static List<ExtendedLevel> allLevels = PatchedContent.ExtendedLevels;
-        private static List<ExtendedLevel> freeLevels = new List<ExtendedLevel>();
-        private static List<ExtendedLevel> lowLevels = new List<ExtendedLevel>();
-        private static List<ExtendedLevel> midLevels = new List<ExtendedLevel>();
-        private static List<ExtendedLevel> highLevels = new List<ExtendedLevel>();
-        private static List<ExtendedLevel> lastList = freeLevels;
-        private static ExtendedLevel selectLevel;
+        private static List<ExtendedLevel> _allMoons = PatchedContent.ExtendedLevels;
+        private static List<ExtendedLevel> _freeMoons = new List<ExtendedLevel>();
+        private static List<ExtendedLevel> _lowMoons = new List<ExtendedLevel>();
+        private static List<ExtendedLevel> _midMoons = new List<ExtendedLevel>();
+        private static List<ExtendedLevel> _highMoons = new List<ExtendedLevel>();
+        private static List<ExtendedLevel> _lastRoute;
 
-        public static string blacklist;
+        [ModData(SaveWhen.OnSave, LoadWhen.OnLoad, SaveLocation.GeneralSave)]
+        private static string _lastRouteCategory;
+        private static readonly Dictionary<string, List<ExtendedLevel>> RouteCategories = new Dictionary<string, List<ExtendedLevel>>()
+        {
+            { "free", _freeMoons },
+            { "low", _lowMoons },
+            { "mid", _midMoons },
+            { "high", _highMoons },
+            { "all", _allMoons }
+        };
 
-        public static bool randomDailyMoon;
+        public static string CompanyName;
+        private static ExtendedLevel _company;
 
-        private static int allPrice;
-        public static int freePrice;
+        public static string Blacklist;
+        private static string[] _blacklistArray;
 
-        public static int lowMinPrice;
-        public static int lowMaxPrice;
-        private static int lowPrice;
+        public static bool RandomDailyMoon;
+        public static bool RandomDailyMoonRepeat;
 
-        public static int midMinPrice;
-        public static int midMaxPrice;
-        private static int midPrice;
+        public static bool CustomPriceAll;
+        public static int AllPrice;
 
-        public static int highMinPrice;
-        public static int highMaxPrice;
-        private static int highPrice;
+        public static bool CustomPriceFree;
+        public static int FreePrice;
+
+        public static bool CustomPriceLow;
+        public static int LowPrice;
+        public static int LowMinPrice;
+        public static int LowMaxPrice;
+
+        public static bool CustomPriceMid;
+        public static int MidPrice;
+        public static int MidMinPrice;
+        public static int MidMaxPrice;
+
+        public static bool CustomPriceHigh;
+        public static int HighPrice;
+        public static int HighMinPrice;
+        public static int HighMaxPrice;
 
         [HarmonyPatch("Start")]
         [HarmonyPostfix]
-        static void SetAllMoonsList(StartOfRound __instance)
+        static void SetAllMoonsList()
         {
-            freeLevels.Clear();
-            lowLevels.Clear();
-            midLevels.Clear();
-            highLevels.Clear();
+            _freeMoons.Clear();
+            _lowMoons.Clear();
+            _midMoons.Clear();
+            _highMoons.Clear();
 
             ModBase.InitConfig();
+            _blacklistArray = Blacklist.Split(new[] { ',' }, StringSplitOptions.RemoveEmptyEntries);
 
-            string[] blacklistArray = blacklist.Split(new[] { ',' }, StringSplitOptions.RemoveEmptyEntries);
-
-            foreach (var level in allLevels)
+            foreach (var level in _allMoons)
             {
-                if (blacklistArray.Contains(level.NumberlessPlanetName))
-                {
-                    continue; 
-                }
-                if (level.RoutePrice == 0)
-                {
-                    freeLevels.Add(level);
-                }
-                if (level.RoutePrice >= lowMinPrice && level.RoutePrice <= lowMaxPrice)
-                {
-                    lowLevels.Add(level);
-                }
-                if (level.RoutePrice >= midMinPrice && level.RoutePrice <= midMaxPrice)
-                {
-                    midLevels.Add(level);
-                }
-                if (level.RoutePrice >= highMinPrice && level.RoutePrice <= highMaxPrice)
-                {
-                    highLevels.Add(level);
-                }
-            }
+                if (CompanyName == level.NumberlessPlanetName) _company = level;
+                if (_blacklistArray.Contains(level.NumberlessPlanetName)) continue;
 
-            allPrice = GetLevelsPrice(allLevels);
-            lowPrice = GetLevelsPrice(lowLevels);
-            midPrice = GetLevelsPrice(midLevels);
-            highPrice = GetLevelsPrice(highLevels);
+                if (level.RoutePrice == 0) _freeMoons.Add(level);
+                if (level.RoutePrice >= LowMinPrice && level.RoutePrice <= LowMaxPrice) _lowMoons.Add(level);
+                if (level.RoutePrice >= MidMinPrice && level.RoutePrice <= MidMaxPrice) _midMoons.Add(level);
+                if (level.RoutePrice >= HighMinPrice && level.RoutePrice <= HighMaxPrice) _highMoons.Add(level);
+            }
+           
+            if (!CustomPriceAll) AllPrice = GetLevelsPrice(_allMoons);
+            if (!CustomPriceFree) FreePrice = GetLevelsPrice(_freeMoons);
+            if (!CustomPriceLow) LowPrice = GetLevelsPrice(_lowMoons);
+            if (!CustomPriceMid) MidPrice = GetLevelsPrice(_midMoons);
+            if (!CustomPriceHigh) HighPrice = GetLevelsPrice(_highMoons);
+
+            if (string.IsNullOrEmpty(_lastRouteCategory))
+            {
+                SetLastRoute(_freeMoons);
+            }
+            else if (RouteCategories.TryGetValue(_lastRouteCategory, out var route))
+            {
+                SetLastRoute(route);
+            }
+            else
+            {
+                ModBase.Logger.LogError($"Invalid route category: {_lastRouteCategory}");
+                SetLastRoute(_freeMoons);
+            }
 
             TerminalAPI();
             DebugLog();
         }
 
+
         [HarmonyPatch("SetShipReadyToLand")]
         [HarmonyPostfix]
-        static void RandomDailyMoon()
+        static void RandomDailyMoonR()
         {
-            if (randomDailyMoon == true)
+            if (!RandomDailyMoon) return;
+            ModBase.Logger.LogInfo($"[RandomDailyMoon] Enable: true");
+
+            var currentMoon = LevelManager.CurrentExtendedLevel.NumberlessPlanetName;
+            ModBase.Logger.LogInfo($"[RandomDailyMoon] Current moon: {currentMoon}");
+
+            if (_blacklistArray.Contains(currentMoon))
             {
-                ModBase.Logger.LogInfo($"RandomDailyMoon: true");
-                ModBase.Logger.LogInfo($"RandomDailyMoon: last moon {LevelManager.CurrentExtendedLevel.NumberlessPlanetName}");
-                string[] blacklistArray = blacklist.Split(new[] { ',' }, StringSplitOptions.RemoveEmptyEntries);
-                if (!blacklistArray.Contains(LevelManager.CurrentExtendedLevel.NumberlessPlanetName))
+                ModBase.Logger.LogInfo("[RandomDailyMoon] Auto-travel from blacklisted moon forbidden");
+                return;
+            }
+
+            if (TimeOfDay.Instance.daysUntilDeadline == 3)
+            {
+                SetLastRoute(_freeMoons);
+                ModBase.Logger.LogInfo("[RandomDailyMoon] First Day Quota. Auto-travel disabled.");
+                return;
+            }
+
+            var localPlayer = GameNetworkManager.Instance.localPlayerController;
+            if (localPlayer == null || !localPlayer.IsHost || !StartOfRound.Instance.CanChangeLevels())
+            {
+                ModBase.Logger.LogInfo("[RandomDailyMoon] Can't change levels");
+                return;
+            }
+
+            var isLastDay = TimeOfDay.Instance.daysUntilDeadline == 0;
+            var nextLevel = isLastDay ? _company : GetRandomMoon(_lastRoute);
+
+            if (RandomDailyMoonRepeat && nextLevel != _company)
+            {
+                int attempts = 0;
+                const int maxAttempts = 10;
+
+                while (nextLevel == LevelManager.CurrentExtendedLevel && attempts < maxAttempts)
                 {
-                    if (TimeOfDay.Instance.daysUntilDeadline != 3)
-                    {
-                        PlayerControllerB localPlayer = GameNetworkManager.Instance.localPlayerController;
-                        if (localPlayer != null && localPlayer.IsHost && StartOfRound.Instance.CanChangeLevels())
-                        {
-                            Terminal terminal = UnityEngine.Object.FindObjectOfType<Terminal>();
-                            terminal.SyncGroupCreditsServerRpc(terminal.groupCredits, terminal.numberOfItemsInDropship);
-                            selectLevel = GetRandomMoon(lastList);
-                            ModBase.Logger.LogInfo($"RandomDailyMoon: next moon {selectLevel.NumberlessPlanetName}");
-                            StartOfRound.Instance.ChangeLevelServerRpc(
-                                selectLevel.SelectableLevel.levelID, terminal.groupCredits);
-                        }
-                        else { 
-                            ModBase.Logger.LogInfo($"Can't change levels");
-                        }
-                    } else {
-                        lastList = freeLevels;
-                        ModBase.Logger.LogInfo($"First Day Quota. Auto-travel disabled.");
-                    }
-                } else
+                    nextLevel = GetRandomMoon(_lastRoute);
+                    attempts++;
+                }
+
+                if (attempts >= maxAttempts)
                 {
-                    ModBase.Logger.LogInfo($"RandomDailyMoon: Auto-travel from the blacklist moons forbidden");
+                    ModBase.Logger.LogWarning("[RandomDailyMoon] Failed to find unique moon after 10 attempts");
                 }
             }
+
+            ModBase.Logger.LogInfo($"[RandomDailyMoon] Next moon: {nextLevel.NumberlessPlanetName} " +
+                                $"{(isLastDay ? "(Last Day)" : "")}");
+
+            var terminal = UnityEngine.Object.FindObjectOfType<Terminal>();
+            terminal.SyncGroupCreditsServerRpc(terminal.groupCredits, terminal.numberOfItemsInDropship);
+            StartOfRound.Instance.ChangeLevelServerRpc(
+                nextLevel.SelectableLevel.levelID,
+                terminal.groupCredits
+            );
         }
 
         public static string SetMoon(List<ExtendedLevel> moonlist, int moonlistListPrice, string routeName)
         {
-            PlayerControllerB localPlayer = GameNetworkManager.Instance.localPlayerController;
-            if (localPlayer != null && localPlayer.IsHost && StartOfRound.Instance.CanChangeLevels())
+            var localPlayer = GameNetworkManager.Instance.localPlayerController;
+            if (localPlayer == null || !localPlayer.IsHost || !StartOfRound.Instance.CanChangeLevels())
             {
-                lastList = moonlist;
-                selectLevel = GetRandomMoon(moonlist);
-                if (selectLevel != null)
-                {
-                    Terminal terminal = UnityEngine.Object.FindObjectOfType<Terminal>();
-                    if (terminal.groupCredits >= moonlistListPrice)
-                    {
-                        terminal.groupCredits -= moonlistListPrice;
-                        terminal.SyncGroupCreditsServerRpc(terminal.groupCredits, terminal.numberOfItemsInDropship);
+                return $"\n Only the Host can set the route \n You must be on orbit \n\n";
+            }
 
-                        StartOfRound.Instance.ChangeLevelServerRpc(
-                            selectLevel.SelectableLevel.levelID,
-                            terminal.groupCredits
-                            );
+            SetLastRoute(moonlist);
 
-                        return $"\n Route: {routeName} ({moonlistListPrice}) \n\n " +
+            var selectLevel = GetRandomMoon(moonlist);
+            if (selectLevel == null)
+            {
+                return $" \n {routeName} list not contain moons \n\n";
+            }
+
+            var terminal = UnityEngine.Object.FindObjectOfType<Terminal>();
+            if (terminal.groupCredits < moonlistListPrice)
+            {
+                return $"Not enough credits! Need {moonlistListPrice}, have {terminal.groupCredits} \n\n";
+            }
+
+            terminal.groupCredits -= moonlistListPrice;
+            terminal.SyncGroupCreditsServerRpc(terminal.groupCredits, terminal.numberOfItemsInDropship);
+            StartOfRound.Instance.ChangeLevelServerRpc(selectLevel.SelectableLevel.levelID, terminal.groupCredits);
+
+            return $"\n Route: {routeName} ({moonlistListPrice}) \n\n " +
                             $"The ship is headed to the [{selectLevel.NumberlessPlanetName}] \n\n " +
                             $"RiskLevel: {selectLevel.SelectableLevel.riskLevel} \n " +
                             $"Weather: {selectLevel.SelectableLevel.currentWeather} \n\n";
-                    }
-                    return $"Not enough credits! Need {moonlistListPrice}, have {terminal.groupCredits} \n\n";                   
-                }
-                return $" \n {routeName} list not contain moons \n\n";
-            }
-            return $"\n Only the Host can set the route \n You must be on orbit \n\n";
+        }
+
+        public static void SetLastRoute(List<ExtendedLevel> route)
+        {
+            _lastRoute = route;
+            _lastRouteCategory = RouteCategories
+                .FirstOrDefault(x => x.Value == route).Key;
         }
 
         public static int GetLevelsPrice(List<ExtendedLevel> Levels)
@@ -170,7 +226,7 @@ namespace LCRandomMoons.Patches
                         count++;
                     }
                 }
-                price = price / count;
+                if (count != 0) price /= count;             
             }
             return price;
         }
@@ -187,11 +243,11 @@ namespace LCRandomMoons.Patches
         {
             StringBuilder sb = new StringBuilder();
 
-            sb.AppendLine($"All Levels: {allPrice} credits");
+            sb.AppendLine($"All Route: {AllPrice} credits");
             sb.AppendLine();
-            sb.AppendLine($"Free Levels: {freePrice} credits");
+            sb.AppendLine($"Free Levels: {FreePrice} credits");
             sb.AppendLine("-------------------------");
-            foreach (var level in freeLevels)
+            foreach (var level in _freeMoons)
             {
                 string weatherType = "";
                 if (level.SelectableLevel.currentWeather != LevelWeatherType.None)
@@ -202,9 +258,9 @@ namespace LCRandomMoons.Patches
             }
 
             sb.AppendLine();
-            sb.AppendLine($"Low Levels: {lowPrice} credits");
+            sb.AppendLine($"Low Route: {LowPrice} credits");
             sb.AppendLine("-------------------------");
-            foreach (var level in lowLevels)
+            foreach (var level in _lowMoons)
             {
                 string weatherType = "";
                 if (level.SelectableLevel.currentWeather != LevelWeatherType.None)
@@ -215,9 +271,9 @@ namespace LCRandomMoons.Patches
             }
 
             sb.AppendLine();
-            sb.AppendLine($"Mid Levels: {midPrice} credits");
+            sb.AppendLine($"Mid Route: {MidPrice} credits");
             sb.AppendLine("-------------------------");
-            foreach (var level in midLevels)
+            foreach (var level in _midMoons)
             {
                 string weatherType = "";
                 if (level.SelectableLevel.currentWeather != LevelWeatherType.None)
@@ -228,9 +284,9 @@ namespace LCRandomMoons.Patches
             }
 
             sb.AppendLine();
-            sb.AppendLine($"High Levels: {highPrice} credits");
+            sb.AppendLine($"High Route: {HighPrice} credits");
             sb.AppendLine("-------------------------");
-            foreach (var level in highLevels)
+            foreach (var level in _highMoons)
             {
                 string weatherType = "";
                 if (level.SelectableLevel.currentWeather != LevelWeatherType.None)
@@ -254,11 +310,13 @@ namespace LCRandomMoons.Patches
                     sb.AppendLine("help - display available commands");
                     sb.AppendLine("list - display a list all the moons by category");
                     sb.AppendLine("");
-                    sb.AppendLine("all - select random moon from [all] list");
-                    sb.AppendLine("free - select random moon from [free] list");
-                    sb.AppendLine("low - select random moon from [low] list");
-                    sb.AppendLine("mid - select random moon from [mid] list");
-                    sb.AppendLine("high - select random moon from [high] list");
+                    sb.AppendLine("all - select random moon from [all] route");
+                    sb.AppendLine("free - select random moon from [free] route");
+                    sb.AppendLine("low - select random moon from [low] route");
+                    sb.AppendLine("mid - select random moon from [mid] route");
+                    sb.AppendLine("high - select random moon from [high] route");
+                    sb.AppendLine("");
+                    sb.AppendLine("Example: \"rd mid\" travels ship to a random moon from route \"mid\"");
                     sb.AppendLine("\n");
                     return sb.ToString();
                 },
@@ -278,7 +336,7 @@ namespace LCRandomMoons.Patches
             {
                 DisplayTextSupplier = () =>
                 {
-                    return SetMoon(allLevels, allPrice, "[All]");
+                    return SetMoon(_allMoons, AllPrice, "[All]");
                 },
                 Category = "Other"
             });
@@ -287,7 +345,7 @@ namespace LCRandomMoons.Patches
             {
                 DisplayTextSupplier = () =>
                 {
-                    return SetMoon(freeLevels, freePrice, "[Free]");
+                    return SetMoon(_freeMoons, FreePrice, "[Free]");
                 },
                 Category = "Other"
             });
@@ -296,7 +354,7 @@ namespace LCRandomMoons.Patches
             {
                 DisplayTextSupplier = () =>
                 {
-                    return SetMoon(lowLevels, lowPrice, "[Low]");
+                    return SetMoon(_lowMoons, LowPrice, "[Low]");
                 },
                 Category = "Other"
             });
@@ -305,7 +363,7 @@ namespace LCRandomMoons.Patches
             {
                 DisplayTextSupplier = () =>
                 {
-                    return SetMoon(midLevels, midPrice, "[Mid]");
+                    return SetMoon(_midMoons, MidPrice, "[Mid]");
                 },
                 Category = "Other"
             });
@@ -314,7 +372,7 @@ namespace LCRandomMoons.Patches
             {
                 DisplayTextSupplier = () =>
                 {
-                    return SetMoon(highLevels, highPrice, "[High]");
+                    return SetMoon(_highMoons, HighPrice, "[High]");
                 },
                 Category = "Other"
             });
@@ -322,35 +380,35 @@ namespace LCRandomMoons.Patches
 
         public static void DebugLog()
         {
-            ModBase.Logger.LogInfo($"All Levels: {allPrice} credits");
+            ModBase.Logger.LogInfo($"All Route: {AllPrice} credits");
             ModBase.Logger.LogInfo("");
-            ModBase.Logger.LogInfo($"FreeLevels: {freePrice} credits");
+            ModBase.Logger.LogInfo($"Free Route: {FreePrice} credits");
             ModBase.Logger.LogInfo("-------------------------");
-            foreach (var level in freeLevels)
+            foreach (var level in _freeMoons)
             {
                 ModBase.Logger.LogInfo(level.NumberlessPlanetName + " Pr: " + level.RoutePrice + " ID: " + level.SelectableLevel.levelID);
             }
             ModBase.Logger.LogInfo("-------------------------");
             ModBase.Logger.LogInfo("");
-            ModBase.Logger.LogInfo($"lowLevels: {lowPrice} credits");
+            ModBase.Logger.LogInfo($"Low Route: {LowPrice} credits");
             ModBase.Logger.LogInfo("-------------------------");
-            foreach (var level in lowLevels)
+            foreach (var level in _lowMoons)
             {
                 ModBase.Logger.LogInfo(level.NumberlessPlanetName + " Pr: " + level.RoutePrice + " ID: " + level.SelectableLevel.levelID);
             }
             ModBase.Logger.LogInfo("-------------------------");
             ModBase.Logger.LogInfo("");
-            ModBase.Logger.LogInfo($"midLevels: {midPrice} credits");
+            ModBase.Logger.LogInfo($"Mid Route: {MidPrice} credits");
             ModBase.Logger.LogInfo("-------------------------");
-            foreach (var level in midLevels)
+            foreach (var level in _midMoons)
             {
                 ModBase.Logger.LogInfo(level.NumberlessPlanetName + " Pr: " + level.RoutePrice + " ID: " + level.SelectableLevel.levelID);
             }
             ModBase.Logger.LogInfo("-------------------------");
             ModBase.Logger.LogInfo("");
-            ModBase.Logger.LogInfo($"highLevels: {highPrice} credits");
+            ModBase.Logger.LogInfo($"High Route: {HighPrice} credits");
             ModBase.Logger.LogInfo("-------------------------");
-            foreach (var level in highLevels)
+            foreach (var level in _highMoons)
             {
                 ModBase.Logger.LogInfo(level.NumberlessPlanetName + " Pr: " + level.RoutePrice + " ID: " + level.SelectableLevel.levelID);
             }

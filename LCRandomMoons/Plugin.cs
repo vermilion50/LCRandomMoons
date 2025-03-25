@@ -13,7 +13,7 @@ namespace LCRandomMoons
     {
         public const string modGUID = "KF.LCRandomMoons";
         private const string modName = "RandomMoons";
-        private const string modVersion = "1.0.2";
+        private const string modVersion = "1.1.0";
 
         private readonly Harmony harmony = new Harmony(modGUID);
         public static ModBase Instance;
@@ -22,16 +22,30 @@ namespace LCRandomMoons
 
         public static void InitConfig()
         {
-            Patch.randomDailyMoon = configFile.Bind<bool>("Global", "Random daily moon", false, "Random moon every day").Value;
-            Patch.blacklist = configFile.Bind<string>("Global", "Blacklist moons", "Liquidation,Galetry,Gordion", "Moons that will never make the roster. ").Value;
-            Patch.freePrice = configFile.Bind<int>("Global", "Free moons price", 0, "You can set the cost of free moons").Value;
 
-            Patch.lowMinPrice = configFile.Bind<int>("Moons list", "(Low)Min Range Price", 1, "Minimum moon value to get on the list").Value;
-            Patch.lowMaxPrice = configFile.Bind<int>("Moons list", "(Low)Max Range Price", 500, "Maximum moon value to get on the list").Value;
-            Patch.midMinPrice = configFile.Bind<int>("Moons list", "(Mid)Min Range Price", 501, "Minimum moon value to get on the list").Value;
-            Patch.midMaxPrice = configFile.Bind<int>("Moons list", "(Mid)Max Range Price", 1500, "Maximum moon value to get on the list").Value;
-            Patch.highMinPrice = configFile.Bind<int>("Moons list", "(High)Min Range Price", 1501, "Minimum moon value to get on the list").Value;
-            Patch.highMaxPrice = configFile.Bind<int>("Moons list", "(High)Max Range Price", 10000, "Maximum moon value to get on the list").Value;
+            Patch.Blacklist = configFile.Bind<string>("Global", "Blacklist moons", "Liquidation,Embrion,Galetry,Gordion", "Moons that will never make the roster. ").Value;
+
+            Patch.RandomDailyMoon = configFile.Bind<bool>("Random Daily Moon", "Enable daily moon", false, "Random moon every day within the selected route.").Value;
+            Patch.RandomDailyMoonRepeat = configFile.Bind<bool>("Random Daily Moon", "Block repeats", true, "When “Random Daily Moon” enable, prevents the same moon from repeating 2 times in a row.").Value;
+            Patch.CompanyName = configFile.Bind<string>("Random Daily Moon", "Company moon", "Gordion", "When “Random Daily Moon” enable, the last day of the quota will send a ship to that moon.").Value;
+
+            Patch.LowMinPrice = configFile.Bind<int>("Range price", "Low min", 1, "Minimum moon value to get on the list").Value;
+            Patch.LowMaxPrice = configFile.Bind<int>("Range price", "Low max", 500, "Maximum moon value to get on the list").Value;
+            Patch.MidMinPrice = configFile.Bind<int>("Range price", "Mid min", 501, "Minimum moon value to get on the list").Value;
+            Patch.MidMaxPrice = configFile.Bind<int>("Range price", "Mid max", 1500, "Maximum moon value to get on the list").Value;
+            Patch.HighMinPrice = configFile.Bind<int>("Range price", "High min", 1501, "Minimum moon value to get on the list").Value;
+            Patch.HighMaxPrice = configFile.Bind<int>("Range price", "High max", 10000, "Maximum moon value to get on the list").Value;
+
+            Patch.CustomPriceAll = configFile.Bind<bool>("Custom Price", "All set manual price", false, "You can manually set the cost All route").Value;
+            Patch.AllPrice = configFile.Bind<int>("Custom Price", "All route price", 0, "Cost of Free route").Value;
+            Patch.CustomPriceFree = configFile.Bind<bool>("Custom Price", "Free set manual price", false, "You can manually set the cost Free route").Value;
+            Patch.FreePrice = configFile.Bind<int>("Custom Price", "Free route price", 0, "Cost of All route").Value;
+            Patch.CustomPriceLow = configFile.Bind<bool>("Custom Price", "Low set manual price", false, "You can manually set the cost Low route").Value;
+            Patch.LowPrice = configFile.Bind<int>("Custom Price", "Low route price", 0, "Cost of Low route").Value;
+            Patch.CustomPriceMid = configFile.Bind<bool>("Custom Price", "Mid set manual price", false, "You can manually set the cost Mid route").Value;
+            Patch.MidPrice = configFile.Bind<int>("Custom Price", "Mid route price", 0, "Cost of Mid route").Value;
+            Patch.CustomPriceHigh = configFile.Bind<bool>("Custom Price", "High set manual price", false, "You can manually set the cost High route").Value;
+            Patch.HighPrice = configFile.Bind<int>("Custom Price", "High route price", 0, "Cost of High route").Value;
         }
 
         void Awake()
@@ -48,6 +62,8 @@ namespace LCRandomMoons
             harmony.PatchAll(typeof(ModBase));
             harmony.PatchAll(typeof(StartOfRoundPatch));
         }
+
+
     }
 
 }
