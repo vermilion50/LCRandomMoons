@@ -23,7 +23,7 @@ namespace LCRandomMoons.Patches
         private static List<ExtendedLevel> _highMoons = new List<ExtendedLevel>();
         private static List<ExtendedLevel> _lastRoute;
 
-        [ModData(SaveWhen.OnSave, LoadWhen.OnLoad, SaveLocation.GeneralSave)]
+        [ModData(SaveWhen.OnSave, LoadWhen.OnLoad, SaveLocation.CurrentSave)]
         private static string _lastRouteCategory;
         private static readonly Dictionary<string, List<ExtendedLevel>> RouteCategories = new Dictionary<string, List<ExtendedLevel>>()
         {
@@ -242,8 +242,11 @@ namespace LCRandomMoons.Patches
         public static string GetMoonsList()
         {
             StringBuilder sb = new StringBuilder();
-
+            sb.AppendLine("Selected route: " + _lastRouteCategory); 
+            sb.AppendLine();
             sb.AppendLine($"All Route: {AllPrice} credits");
+            sb.AppendLine("-------------------------");
+            sb.AppendLine("*all*");
             sb.AppendLine();
             sb.AppendLine($"Free Levels: {FreePrice} credits");
             sb.AppendLine("-------------------------");
@@ -308,7 +311,8 @@ namespace LCRandomMoons.Patches
                     sb.AppendLine("Syntax: rd <command>");
                     sb.AppendLine("");
                     sb.AppendLine("help - display available commands");
-                    sb.AppendLine("list - display a list all the moons by category");
+                    sb.AppendLine("list - display list all the moons by category");
+                    sb.AppendLine("route - display selected route");
                     sb.AppendLine("");
                     sb.AppendLine("all - select random moon from [all] route");
                     sb.AppendLine("free - select random moon from [free] route");
@@ -328,6 +332,15 @@ namespace LCRandomMoons.Patches
                 DisplayTextSupplier = () =>
                 {
                     return GetMoonsList();
+                },
+                Category = "Other"
+            });
+
+            AddCommand("rd route", new CommandInfo()
+            {
+                DisplayTextSupplier = () =>
+                {
+                    return "Selected route: "+_lastRouteCategory+ "\n\n";
                 },
                 Category = "Other"
             });
