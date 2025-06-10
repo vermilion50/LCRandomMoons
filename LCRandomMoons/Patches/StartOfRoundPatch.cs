@@ -181,8 +181,6 @@ namespace LCRandomMoons.Patches
                 return $"\n Only the Host can set the route \n You must be on orbit \n\n";
             }
 
-            SetLastRoute(moonlist);
-
             var selectLevel = GetRandomMoon(moonlist);
             if (selectLevel == null)
             {
@@ -195,6 +193,7 @@ namespace LCRandomMoons.Patches
                 return $"Not enough credits! Need {moonlistListPrice}, have {terminal.groupCredits} \n\n";
             }
 
+            SetLastRoute(moonlist);
             terminal.groupCredits -= moonlistListPrice;
             terminal.SyncGroupCreditsServerRpc(terminal.groupCredits, terminal.numberOfItemsInDropship);
             StartOfRound.Instance.ChangeLevelServerRpc(selectLevel.SelectableLevel.levelID, terminal.groupCredits);
